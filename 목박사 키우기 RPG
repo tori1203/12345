@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>목박사 RPG — Web Demo</title>
+<style>
+  :root{--bg:#071028;--panel:#0f1720;--accent:#6ee7b7;--muted:#9fb0c8}
+  html,body{height:100%;margin:0;font-family:Apple SD Gothic Neo, Malgun Gothic, 'Noto Sans KR', sans-serif;background:linear-gradient(180deg,#020617,#071028);color:#e6eef8}
+  .wrap{max-width:1100px;margin:18px auto;display:grid;grid-template-columns:320px 1fr;gap:16px;padding:12px}
+  .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:12px;border-radius:10px}
+  h2{margin:6px 0 12px;color:var(--accent)}
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px}
+  .log{height:560px;overflow:auto;padding:10px;background:#021022;border-radius:8px;border:1px solid rgba(255,255,255,0.02);white-space:pre-wrap}
+  .cmdline{display:flex;gap:8px;margin-top:10px}
+  input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+  button{padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:inherit;cursor:pointer}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:6px;border-bottom:1px dashed rgba(255,255,255,0.03);text-align:left;font-size:13px}
+  .small{font-size:12px;color:var(--muted)}
+  .shop-list{max-height:220px;overflow:auto}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:12px}
+  .title-row{display:flex;justify-content:space-between;align-items:center}
+  .mono{font-family:monospace}
+  .red{color:#ff6b6b}
+  .green{color:#7ee787}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <div class="title-row">
+        <h2>플레이어 상태</h2>
+        <div class="small">목박사 RPG — 웹 데모</div>
+      </div>
+      <div class="statgrid">
+        <div class="stat">체력: <span id="hp">150</span> / <span id="maxHp">150</span></div>
+        <div class="stat">지식: <span id="knowledge">100</span></div>
+        <div class="stat">명성: <span id="reputation">100</span></div>
+        <div class="stat">돈: <span id="money">30</span> 코인</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <h2>인벤토리</h2>
+        <div id="inventoryList" class="small">(아직 아이템 없음)</div>
+        <div class="small" style="margin-top:8px">발명품 보유: <span id="invInventions">0</span></div>
+        <div style="margin-top:8px">
+          <label><input type="checkbox" id="haveGloves"> 장갑 착용 (영구적 효과 시뮬레이션)</label>
+          <div class="small">장갑을 체크하면 수집 시 체력/명성 감소 완화</div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h2>푸코상점</h2>
+        <div class="small">명령어: <code>!푸코상점</code> / <code>!구매 [이름] [수량]</code></div>
+        <div id="shopList" class="shop-list small" style="margin-top:8px"></div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h2>저장 슬롯</h2>
+        <div class="small">최대 10개 저장. 명령어: <code>!저장 [이름]</code> / <code>!불러오기</code> / <code>!저장삭제 [이름]</code></div>
+        <div id="saveList" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="title-row"><h2>게임 로그</h2><div class="small mono">명령어 입력: !시작 !수집 !제작 등</div></div>
+      <div id="log" class="log"></div>
+
+      <div class="cmdline">
+        <input id="cmdInput" type="text" placeholder="명령어를 입력하세요 (예: !게임시작, !수집, !제작 못 고철)" />
+        <button id="sendBtn">전송</button>
+      </div>
+
+      <div class="controls">
+        <button onclick="showHelp()">명령어 도움</button>
+        <button onclick="quickStart()">!게임시작 (퀵)</button>
+        <button onclick="openShop()">푸코상점 보기</button>
+        <button onclick="listSaves()">저장목록</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   목박사 RPG — 웹 데모
+   (이 파일을 index.html로 GitHub Pages에 올리면 동작합니다)
+   ========================= */
+
+/* ---------- 초기 상태 ---------- */
+const DEFAULT = {
+  day: 1, turns: 15,
+  hp: 150, maxHp: 150,
+  knowledge: 100, reputation: 100, money: 30,
+  inventory: {}, // {item:count}
+  inventions: [], // {name
